@@ -7,13 +7,15 @@ type FileSystem interface {
 	DeleteFile(path string) error
 }
 
+type FS struct{}
+
 // ReadDir reads a given path and returns its entries
-func ReadDir(path string) ([]os.DirEntry, error) {
+func (f FS) ReadDir(path string) ([]os.DirEntry, error) {
 	return os.ReadDir(path)
 }
 
 // DeleteFile deletes a given file from the filesystem.
 // If something went wrong, an error of type *PathError is returned.
-func DeleteFile(path string) error {
+func (f FS) DeleteFile(path string) error {
 	return os.Remove(path)
 }

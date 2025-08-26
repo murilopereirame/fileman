@@ -1,21 +1,95 @@
 package main
 
 import (
-	"fmt"
+	"fileman/clock"
+	"fileman/fs"
+	"fileman/handler"
+	"github.com/go-co-op/gocron/v2"
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
 )
 
-//TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
-
 func main() {
-	//TIP <p>Press <shortcut actionId="ShowIntentionActions"/> when your caret is at the underlined text
-	// to see how GoLand suggests fixing the warning.</p><p>Alternatively, if available, click the lightbulb to view possible fixes.</p>
-	s := "gopher"
-	fmt.Printf("Hello and welcome, %s!\n", s)
+	realClock := clock.RealClock{}
+	fileHandler := handler.New(realClock)
+	fileSystem := fs.FS{}
 
-	for i := 1; i <= 5; i++ {
-		//TIP <p>To start your debugging session, right-click your code in the editor and select the Debug option.</p> <p>We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-		// for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.</p>
-		fmt.Println("i =", 100/i)
+	logger := gocron.NewLogger(gocron.LogLevelInfo)
+	scheduler, err := gocron.NewScheduler(gocron.WithLogger(logger))
+	if err != nil {
+		panic(err)
 	}
+
+	crontab, crontabExists := os.LookupEnv("FILEMAN_CRONTAB")
+	if !crontabExists {
+		panic("FILEMAN_CRONTAB not set")
+	}
+
+	paths, pathsExists := os.LookupEnv("FILEMAN_PATHS")
+	pathsSlice := strings.Split(paths, ",")
+	if !pathsExists {
+		panic("FILEMAN_PATHS not set")
+	}
+
+	ages, agesExists := os.LookupEnv("FILEMAN_AGES")
+	if !agesExists {
+		panic("FILEMAN_AGES not set")
+	}
+
+	agesSlice := strings.Split(ages, ",")
+	if len(agesSlice) != len(pathsSlice) {
+		panic("Number of ages doesn't match number of paths")
+	}
+
+	errs := make([]error, 0)
+	jobs := make([]gocron.Job, 0)
+
+	for idx, path := range pathsSlice {
+		// Convert age from string to float
+		age, e := strconv.ParseFloat(agesSlice[idx], 64)
+		if e != nil {
+			errs = append(errs, e)
+			continue
+		}
+
+		job, e := scheduler.NewJob(
+			gocron.CronJob(crontab, false),
+			gocron.NewTask(func() {
+				deleted, errs := fileHandler.DeleteOldFiles(fileSystem, path, age)
+				for _, d := range deleted {
+					logger.Info("Deleted file", d)
+				}
+
+				for _, e := range errs {
+					logger.Error("Error deleting file", e.Error())
+				}
+
+				if len(deleted) == 0 && len(errs) == 0 {
+					logger.Info("No files to delete in path", path)
+				}
+			}),
+			gocron.WithName("PathCleaner-"+path),
+		)
+
+		if e != nil {
+			errs = append(errs, e)
+			continue
+		}
+
+		jobs = append(jobs, job)
+	}
+
+	for _, e := range errs {
+		logger.Error("Error scheduling job", e.Error())
+	}
+
+	for _, job := range jobs {
+		logger.Info("Scheduled Job", "Name", job.Name(), "ID", job.ID())
+	}
+
+	scheduler.Start()
+
+	runtime.Goexit()
 }
