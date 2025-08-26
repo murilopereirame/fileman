@@ -8,7 +8,7 @@ import (
 )
 
 type IFileHandler interface {
-	ListFiles(fs fs.FileSystem, path string) list.List
+	ListFiles(fs fs.FileSystem, path string) (list.List, error)
 }
 
 type FileHandler struct {
@@ -23,25 +23,24 @@ func New(clock clock.Clock) *FileHandler {
 
 // ListFiles list the files in a given directory returning
 // the files together with its details
-func (f FileHandler) ListFiles(fs fs.FileSystem, path string) list.List {
+func (f FileHandler) ListFiles(fs fs.FileSystem, path string) (list.List, error) {
 	files := list.List{}
 	dirEntries, err := fs.ReadDir(path)
 
 	if err != nil {
-		return list.List{}
+		return list.List{}, err
 	}
 
 	for _, entry := range dirEntries {
 		file := &File{
-			error: make([]string, 0),
+			name: entry.Name(),
 		}
 
 		info, err := entry.Info()
 
 		if err != nil {
-			file.error = append(file.error, err.Error())
+			file.error = err
 		} else {
-			file.name = entry.Name()
 			file.createdAt = info.ModTime().Unix()
 			file.age = f.clock.CalculateAge(info.ModTime().Unix())
 			file.path = filepath.Join(path, entry.Name())
@@ -51,17 +50,27 @@ func (f FileHandler) ListFiles(fs fs.FileSystem, path string) list.List {
 		files.PushBack(file)
 	}
 
-	return files
+	return files, nil
 }
 
 // DeleteOldFiles deletes files older than the given threshold (in days)
 // from the given path. It returns a list of errors encountered during the process.
 func (f FileHandler) DeleteOldFiles(fs fs.FileSystem, path string, threshold float64) []error {
-	files := f.ListFiles(fs, path)
+	files, err := f.ListFiles(fs, path)
 	errors := make([]error, 0)
+
+	if err != nil {
+		errors = append(errors, err)
+		return errors
+	}
 
 	for e := files.Front(); e != nil; e = e.Next() {
 		file := e.Value.(*File)
+
+		if file.error != nil {
+			errors = append(errors, file.error)
+			continue
+		}
 
 		if !file.isDir && file.age > threshold {
 			err := fs.DeleteFile(file.path)

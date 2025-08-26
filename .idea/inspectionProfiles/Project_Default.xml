@@ -4,6 +4,7 @@
     <inspection_tool class="GoDfaErrorMayBeNotNil" enabled="true" level="WARNING" enabled_by_default="true">
       <methods>
         <method importPath="os" receiver="DirEntry" name="Info" />
+        <method importPath="fileman/handler" receiver="FileHandler" name="ListFiles" />
       </methods>
     </inspection_tool>
   </profile>
