@@ -9,6 +9,7 @@ import (
 
 type IFileHandler interface {
 	ListFiles(fs fs.FileSystem, path string) (list.List, error)
+	DeleteOldFiles(fs fs.FileSystem, path string, threshold float64) ([]string, []error)
 }
 
 type FileHandler struct {
@@ -55,13 +56,14 @@ func (f FileHandler) ListFiles(fs fs.FileSystem, path string) (list.List, error)
 
 // DeleteOldFiles deletes files older than the given threshold (in days)
 // from the given path. It returns a list of errors encountered during the process.
-func (f FileHandler) DeleteOldFiles(fs fs.FileSystem, path string, threshold float64) []error {
+func (f FileHandler) DeleteOldFiles(fs fs.FileSystem, path string, threshold float64) ([]string, []error) {
 	files, err := f.ListFiles(fs, path)
+	deletedFiles := make([]string, 0)
 	errors := make([]error, 0)
 
 	if err != nil {
 		errors = append(errors, err)
-		return errors
+		return deletedFiles, errors
 	}
 
 	for e := files.Front(); e != nil; e = e.Next() {
@@ -77,9 +79,11 @@ func (f FileHandler) DeleteOldFiles(fs fs.FileSystem, path string, threshold flo
 
 			if err != nil {
 				errors = append(errors, err)
+			} else {
+				deletedFiles = append(deletedFiles, file.path)
 			}
 		}
 	}
 
-	return errors
+	return deletedFiles, errors
 }

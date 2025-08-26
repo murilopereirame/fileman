@@ -141,8 +141,10 @@ func TestDeleteOldFile(t *testing.T) {
 		clock: mockClock,
 	}
 
-	result := fileHandler.DeleteOldFiles(mockFS, "foo/bar", 7)
-	assert.Equal(t, 0, len(result))
+	result, errs := fileHandler.DeleteOldFiles(mockFS, "foo/bar", 7)
+	assert.Equal(t, 0, len(errs))
+	assert.Equal(t, 1, len(result))
+	assert.Equal(t, "foo/bar/file1.txt", result[0])
 }
 
 func TestDeleteOldFileHandlesListingError(t *testing.T) {
@@ -160,9 +162,10 @@ func TestDeleteOldFileHandlesListingError(t *testing.T) {
 		clock: mockClock,
 	}
 
-	result := fileHandler.DeleteOldFiles(mockFS, "foo/bar", 7)
-	assert.Equal(t, 1, len(result))
-	assert.Equal(t, mockError, result[0])
+	result, errs := fileHandler.DeleteOldFiles(mockFS, "foo/bar", 7)
+	assert.Equal(t, 1, len(errs))
+	assert.Equal(t, mockError, errs[0])
+	assert.Equal(t, 0, len(result))
 }
 
 func TestDeleteOldFileHandlesFileWithError(t *testing.T) {
@@ -199,9 +202,11 @@ func TestDeleteOldFileHandlesFileWithError(t *testing.T) {
 		clock: mockClock,
 	}
 
-	result := fileHandler.DeleteOldFiles(mockFS, "foo/bar", 7)
+	result, errs := fileHandler.DeleteOldFiles(mockFS, "foo/bar", 7)
+	assert.Equal(t, 1, len(errs))
+	assert.Equal(t, mockError, errs[0])
 	assert.Equal(t, 1, len(result))
-	assert.Equal(t, mockError, result[0])
+	assert.Equal(t, "foo/bar/file1.txt", result[0])
 }
 
 func TestDeleteOldFileFailsOnDelete(t *testing.T) {
@@ -245,7 +250,9 @@ func TestDeleteOldFileFailsOnDelete(t *testing.T) {
 		clock: mockClock,
 	}
 
-	result := fileHandler.DeleteOldFiles(mockFS, "foo/bar", 7)
+	result, errs := fileHandler.DeleteOldFiles(mockFS, "foo/bar", 7)
+	assert.Equal(t, 1, len(errs))
+	assert.Equal(t, mockError, errs[0])
 	assert.Equal(t, 1, len(result))
-	assert.Equal(t, mockError, result[0])
+	assert.Equal(t, "foo/bar/file1.txt", result[0])
 }
