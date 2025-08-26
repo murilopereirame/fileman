@@ -53,3 +53,24 @@ func (f FileHandler) ListFiles(fs fs.FileSystem, path string) list.List {
 
 	return files
 }
+
+// DeleteOldFiles deletes files older than the given threshold (in days)
+// from the given path. It returns a list of errors encountered during the process.
+func (f FileHandler) DeleteOldFiles(fs fs.FileSystem, path string, threshold float64) []error {
+	files := f.ListFiles(fs, path)
+	errors := make([]error, 0)
+
+	for e := files.Front(); e != nil; e = e.Next() {
+		file := e.Value.(*File)
+
+		if !file.isDir && file.age > threshold {
+			err := fs.DeleteFile(file.path)
+
+			if err != nil {
+				errors = append(errors, err)
+			}
+		}
+	}
+
+	return errors
+}

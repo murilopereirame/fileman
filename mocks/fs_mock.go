@@ -40,6 +40,20 @@ func (m *MockFileSystem) EXPECT() *MockFileSystemMockRecorder {
 	return m.recorder
 }
 
+// DeleteFile mocks base method.
+func (m *MockFileSystem) DeleteFile(path string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteFile", path)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteFile indicates an expected call of DeleteFile.
+func (mr *MockFileSystemMockRecorder) DeleteFile(path any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFile", reflect.TypeOf((*MockFileSystem)(nil).DeleteFile), path)
+}
+
 // ReadDir mocks base method.
 func (m *MockFileSystem) ReadDir(path string) ([]os.DirEntry, error) {
 	m.ctrl.T.Helper()
