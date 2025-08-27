@@ -1,0 +1,16 @@
+services:
+  fileman:
+    build:
+      context: .
+      args:
+        - "PUID=${PUID:-1000}"
+        - "PGID=${PGID:-1000}"
+    image: murilopereira.dev/fileman:latest
+    container_name: fileman
+    restart: unless-stopped
+    environment:
+      FILEMAN_AGES: ""
+      FILEMAN_PATHS: ""
+      FILEMAN_CRONTAB: "* * * * *"
+    volumes:
+      - /path/to/monitored/folder:/files
