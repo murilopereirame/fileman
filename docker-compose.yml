@@ -9,8 +9,7 @@ services:
     container_name: fileman
     restart: unless-stopped
     environment:
-      FILEMAN_AGES: ""
-      FILEMAN_PATHS: ""
-      FILEMAN_CRONTAB: "* * * * *"
+      - CONFIG_PATH=config.json
     volumes:
       - /path/to/monitored/folder:/files
+      - config.json:/app/config.json

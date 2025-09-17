@@ -2,13 +2,12 @@ package main
 
 import (
 	"fileman/clock"
+	"fileman/config"
 	"fileman/fs"
 	"fileman/handler"
 	"github.com/go-co-op/gocron/v2"
 	"os"
 	"runtime"
-	"strconv"
-	"strings"
 )
 
 func main() {
@@ -22,42 +21,28 @@ func main() {
 		panic(err)
 	}
 
-	crontab, crontabExists := os.LookupEnv("FILEMAN_CRONTAB")
-	if !crontabExists {
-		panic("FILEMAN_CRONTAB not set")
+	configFile, configExists := os.LookupEnv("CONFIG_PATH")
+	if !configExists {
+		configFile = "config.json"
 	}
 
-	paths, pathsExists := os.LookupEnv("FILEMAN_PATHS")
-	pathsSlice := strings.Split(paths, ",")
-	if !pathsExists {
-		panic("FILEMAN_PATHS not set")
+	configObject, configError := config.New(configFile).Load()
+	if configError != nil {
+		panic(configError)
 	}
 
-	ages, agesExists := os.LookupEnv("FILEMAN_AGES")
-	if !agesExists {
-		panic("FILEMAN_AGES not set")
-	}
-
-	agesSlice := strings.Split(ages, ",")
-	if len(agesSlice) != len(pathsSlice) {
-		panic("Number of ages doesn't match number of paths")
+	if configObject.Cron == "" {
+		panic("Cron expression not set in configObject")
 	}
 
 	errs := make([]error, 0)
 	jobs := make([]gocron.Job, 0)
 
-	for idx, path := range pathsSlice {
-		// Convert age from string to float
-		age, e := strconv.ParseFloat(agesSlice[idx], 64)
-		if e != nil {
-			errs = append(errs, e)
-			continue
-		}
-
+	for _, directory := range configObject.WatchedDirectories {
 		job, e := scheduler.NewJob(
-			gocron.CronJob(crontab, false),
+			gocron.CronJob(configObject.Cron, false),
 			gocron.NewTask(func() {
-				deleted, errs := fileHandler.DeleteOldFiles(fileSystem, path, age)
+				deleted, errs := fileHandler.DeleteOldFiles(fileSystem, directory.Path, directory.Age)
 				for _, d := range deleted {
 					logger.Info("Deleted file", d)
 				}
@@ -67,10 +52,10 @@ func main() {
 				}
 
 				if len(deleted) == 0 && len(errs) == 0 {
-					logger.Info("No files to delete in path", path)
+					logger.Info("No files to delete in path", directory.Path)
 				}
 			}),
-			gocron.WithName("PathCleaner-"+path),
+			gocron.WithName("PathCleaner-"+directory.Path),
 		)
 
 		if e != nil {

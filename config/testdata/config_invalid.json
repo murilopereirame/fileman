@@ -1,0 +1,7 @@
+{
+  "crone": "* * * * *",
+  "watchedDirectories": [
+    "foo/bar",
+    "bar/foo"
+  ]
+}

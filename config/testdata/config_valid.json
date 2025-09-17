@@ -1,0 +1,13 @@
+{
+  "cron": "* * * * *",
+  "watchedDirectories": [
+    {
+      "path": "foo/bar",
+      "age": 1.5
+    },
+    {
+      "path": "bar/foo",
+      "age": 2.0
+    }
+  ]
+}
